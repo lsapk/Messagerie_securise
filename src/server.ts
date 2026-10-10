@@ -20,8 +20,6 @@ initDb();
 configureWebPush();
 
 const app = next({ dev, hostname: '0.0.0.0', port });
-const handle = app.getRequestHandler();
-const handleUpgrade = app.getUpgradeHandler();
 
 // Map userId -> Set de WebSockets actifs (un utilisateur peut avoir plusieurs onglets/appareils ouverts)
 const activeUserSockets = new Map<number, Set<WebSocket>>();
@@ -63,6 +61,9 @@ function broadcastPresence() {
 
 async function main() {
   await app.prepare();
+
+  const handle = app.getRequestHandler();
+  const handleUpgrade = app.getUpgradeHandler();
 
   const server = http.createServer((req, res) => {
     const parsedUrl = parseUrl(req.url!, true);

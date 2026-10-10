@@ -63,3 +63,4 @@
 - **[2026-10-10 18:49]** - `src/app/page.tsx` - Sélecteur de contact, WS sans reconnexion après logout, déduplication, chargement par destinataire.
 - **[2026-10-10 18:50]** - `tests/unit/*.ts` / `vitest.config.ts` / `package.json` - Tests d’isolation, script `test:unit`, tests séquentiels SQLite.
 - **[2026-10-10 18:50]** - `Dockerfile` / `docker-compose.yml` / `.gitignore` - `next.config.ts` copié, tunnel Cloudflare en profil optionnel, secrets exclus.
+- **[2026-10-10 19:35]** - `src/server.ts` - Correction du moment d'initialisation des handlers Next.js (`app.prepare()`) pour le serveur personnalisé HTTP & WebSocket.

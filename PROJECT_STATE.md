@@ -30,7 +30,7 @@
 - [x] Module Web Push VAPID : script de génération de clés, souscription client, dispatch automatique dès qu'un destinataire n'est pas actif sur le WebSocket.
 - [x] Dockerfile multi-stage et `docker-compose.yml` avec service `cloudflared`.
 - [x] Scripts utilitaires : `npm run seed` (utilisateurs de test), `npm run vapid:generate` (générateur de clés).
-- [x] Suite complète de tests unitaires et d'intégration Vitest (19 tests validés avec succès).
+- [x] Suite complète de tests unitaires et d'intégration Vitest (24 tests validés avec succès).
 - [x] Vérification de typage TypeScript strict sans erreur (`tsc --noEmit`).
 
 ## 5. Dette Technique & Points d'Attention
