@@ -1,0 +1,1 @@
+Tu dois seulement utiliser ce dossier boilerplate. Ne rien modifier ici seulement copier des codes et les coller dans le vrai projet, ce dossier est juste la pour te cadrer, que tu suivent les bons principes de codes, avec des codes fonctionnelles déjà existant que tu devras copier d'ici et coller dans le projet puis modifier directement dans le projet.

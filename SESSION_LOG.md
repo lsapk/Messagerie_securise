@@ -1,0 +1,65 @@
+# Journal d'Exécution (Mise à jour en temps réel)
+
+*Format d'entrée : [HORODATAGE] - [FICHIER MODIFIÉ] - [ACTION & DÉCISION]*
+
+---
+
+### Session En Cours
+- **[2026-05-17 14:00]** - `SESSION_LOG.md` - Initialisation du journal d'exécution.
+- **[2026-05-17 14:05]** - `src/lib/db.ts` - Création du client DB avec gestion sécurisée des variables d'environnement.
+- **[2026-05-17 14:12]** - `src/app/api/user/route.ts` - Ajout de la route utilisateur avec validation Zod et vérification de session serveur.
+- **[2026-10-09 14:12]** - `implementation_plan.md` - Cadrage architectural et élaboration du plan d'implémentation pour la messagerie privée PWA + Web Push + Cloudflare.
+- **[2026-10-09 14:23]** - `package.json` - Configuration des dépendances, scripts npm (Next.js, ws, SQLite, web-push, vitest).
+- **[2026-10-09 14:23]** - `tsconfig.json` - Configuration stricte TypeScript avec alias `@/*`.
+- **[2026-10-09 14:24]** - `next.config.ts` - Configuration Next.js avec bodySizeLimit adapté aux uploads de photos HD.
+- **[2026-10-09 14:24]** - `tailwind.config.ts` - Configuration Tailwind CSS avec thématique PWA sombre.
+- **[2026-10-09 14:24]** - `postcss.config.js` - Configuration PostCSS standard.
+- **[2026-10-09 14:24]** - `.env.example` - Définition des variables requises (PORT, DATABASE_URL, VAPID, SESSION_SECRET).
+- **[2026-10-09 14:24]** - `vitest.config.ts` - Configuration Vitest pour les tests unitaires et d'intégration.
+- **[2026-10-09 14:25]** - `scripts/generate-vapid.ts` - Script de génération de clés VAPID et synchronisation automatique dans .env.
+- **[2026-10-09 14:25]** - `src/validations/auth.ts` - Schéma Zod strict pour la validation du login et du payload utilisateur.
+- **[2026-10-09 14:25]** - `src/validations/message.ts` - Schémas Zod pour la création de messages et la validation des trames WebSocket.
+- **[2026-10-09 14:25]** - `src/validations/push.ts` - Schéma Zod pour valider l'objet de souscription Web Push client.
+- **[2026-10-09 14:26]** - `src/libs/db.ts` - Initialisation de SQLite (WAL mode, foreign keys) et fonctions de requêtes pour users, messages, et push_subscriptions.
+- **[2026-10-09 14:26]** - `src/libs/auth.ts` - Fonctions de hashage bcrypt, signature/vérification JWT et helpers de cookies sécurisés.
+- **[2026-10-09 14:27]** - `src/libs/push.ts` - Gestionnaire d'envoi Web Push VAPID et nettoyage des endpoints expirés (410/404).
+- **[2026-10-09 14:27]** - `src/app/api/auth/login/route.ts` - Route de connexion avec rate-limiting, vérification de hash et cookie de session.
+- **[2026-10-09 14:27]** - `src/app/api/auth/logout/route.ts` - Route de déconnexion avec expiration du cookie.
+- **[2026-10-09 14:27]** - `src/app/api/auth/me/route.ts` - Route de récupération du profil connecté et contacts disponibles.
+- **[2026-10-09 14:28]** - `src/app/api/upload/route.ts` - Upload sécurisé de photos (whitelist MIME, UUID, anti-traversal, 15Mo max).
+- **[2026-10-09 14:28]** - `src/app/api/uploads/[filename]/route.ts` - Route de distribution sécurisée des médias réservée aux sessions authentifiées.
+- **[2026-10-09 14:28]** - `src/app/api/subscribe/route.ts` - Route d'enregistrement et mise à jour de la souscription Web Push par utilisateur.
+- **[2026-10-09 14:28]** - `src/app/api/push/public-key/route.ts` - Transmission sécurisée de la clé publique VAPID aux clients.
+- **[2026-10-09 14:28]** - `src/app/api/messages/route.ts` - Consultation de l'historique et création de messages avec support push en arrière-plan.
+- **[2026-10-09 14:29]** - `src/server.ts` - Serveur HTTP + WebSocket `/ws` unifié avec authentification cookie, présence en direct et déclenchement automatique Web Push VAPID si destinataire hors-ligne.
+- **[2026-10-09 14:29]** - `public/manifest.json` - Manifeste PWA pour installation native sur iOS et Android.
+- **[2026-10-09 14:29]** - `public/sw.js` - Service Worker avec gestionnaire de push event et réveil de fenêtre PWA.
+- **[2026-10-09 14:30]** - `scripts/generate-icons.ts` - Générateur d'icônes PNG valides (192x192 et 512x512) pour PWA.
+- **[2026-10-09 14:31]** - `scripts/seed.ts` - Script d'initialisation des utilisateurs initiaux dans la base SQLite locale.
+- **[2026-10-09 14:33]** - `src/app/globals.css` - Styles CSS globaux PWA, configuration Tailwind et safe-area iOS.
+- **[2026-10-09 14:33]** - `src/app/layout.tsx` - Layout racine avec configuration PWA Apple/Android et viewport mobile-first.
+- **[2026-10-09 14:34]** - `src/app/page.tsx` - Interface complète de discussion : gestion session, WebSocket live, statut présence, souscription push VAPID, lightbox et partage photo.
+- **[2026-10-09 14:35]** - `Dockerfile` - Image multi-stage Node 24 Alpine pour conteneurisation de production.
+- **[2026-10-09 14:35]** - `docker-compose.yml` - Déploiement multi-conteneurs de l'application et du tunnel Cloudflare avec volumes hôtes ./data et ./uploads.
+- **[2026-10-09 14:35]** - `tests/unit/validation.test.ts` - Suite de tests unitaires pour la validation Zod (login, messages, WS, push).
+- **[2026-10-09 14:35]** - `tests/unit/auth.test.ts` - Tests de sécurité du hashage bcrypt, tokens signés JWT et cookies HTTP-only.
+- **[2026-10-09 14:36]** - `tests/unit/db.test.ts` - Tests de la persistance SQLite (utilisateurs, messages ordonnés, souscriptions push).
+- **[2026-10-09 14:36]** - `vitest.config.ts` - Restriction du scope de test à tests/**/*.test.ts en excluant le dossier modèle.
+- **[2026-10-09 14:37]** - `src/libs/db.ts` / `tests/unit/db.test.ts` - Implémentation de closeDb() et libération des verrous de fichiers SQLite sous Windows.
+- **[2026-10-09 14:40]** - `src/types/web-push.d.ts` - Définition des types TypeScript stricts pour le module web-push.
+- **[2026-10-09 14:40]** - `src/app/page.tsx` - Résolution des types stricts BufferSource pour VAPID et typage props SVG lucide-react.
+- **[2026-10-09 14:41]** - `src/app/page.tsx` - Typage BufferSource natif ArrayBuffer pour applicationServerKey.
+- **[2026-10-09 14:42]** - `npm run build` - Compilation de production réussie avec génération des pages et routes API.
+- **[2026-10-09 14:48]** - `PROJECT_STATE.md` - Validation des 19 tests Vitest, vérification TypeScript, et documentation globale du projet.
+- **[2026-10-09 14:55]** - `src/validations/message.ts` - Prise en charge de nullable() sur recipientId, content et mediaPath pour éviter le rejet des messages avec destinataire null.
+- **[2026-10-09 14:56]** - `src/server.ts` - Écoute sur 0.0.0.0 pour permettre l'accès réseau Wi-Fi depuis les smartphones et autres appareils du LAN.
+- **[2026-10-09 14:56]** - `src/app/page.tsx` - Gestion explicite des retours d'erreurs WebSocket pour avertir l'utilisateur en cas de payload invalide.
+- **[2026-10-09 14:57]** - `tests/unit/validation.test.ts` - Couverture de test unitaire pour recipientId null (message général ou envoi direct).
+- **[2026-10-10 18:45]** - `src/validations/message.ts` - Destinataire obligatoire + whitelist stricte des chemins média UUID.
+- **[2026-10-10 18:46]** - `src/libs/db.ts` - Isolation des conversations, contrôle d’accès médias, init DB paresseuse (plus d’écriture tests dans chat.db).
+- **[2026-10-10 18:47]** - `src/server.ts` - Passage HMR Next.js, plus de destruction des upgrades hors `/ws`, destinataire vérifié, plus de reconnexion groupe.
+- **[2026-10-10 18:48]** - `src/app/api/messages/route.ts` - Historique filtré par conversation, plus de fuite de tous les messages.
+- **[2026-10-10 18:48]** - `src/app/api/uploads/[filename]/route.ts` - UUID + accès réservé aux participants du message.
+- **[2026-10-10 18:49]** - `src/app/page.tsx` - Sélecteur de contact, WS sans reconnexion après logout, déduplication, chargement par destinataire.
+- **[2026-10-10 18:50]** - `tests/unit/*.ts` / `vitest.config.ts` / `package.json` - Tests d’isolation, script `test:unit`, tests séquentiels SQLite.
+- **[2026-10-10 18:50]** - `Dockerfile` / `docker-compose.yml` / `.gitignore` - `next.config.ts` copié, tunnel Cloudflare en profil optionnel, secrets exclus.
