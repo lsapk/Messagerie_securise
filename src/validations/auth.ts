@@ -14,6 +14,11 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(100),
+  newPassword: z.string().min(6).max(100),
+});
+
 export const userPayloadSchema = z.object({
   id: z.number().int().positive(),
   username: z.string().min(2).max(50),

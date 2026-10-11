@@ -6,6 +6,7 @@ import {
   createUser,
   getUserByUsername,
   getUserById,
+  getAllUsers,
   createMessage,
   getConversationMessages,
   canUserAccessMediaPath,
@@ -13,6 +14,8 @@ import {
   getPushSubscriptionsForUser,
   getPushSubscriptionsExcludingUser,
   deletePushSubscription,
+  syncUsers,
+  updateUserPassword,
   closeDb,
 } from '../../src/libs/db';
 
@@ -108,5 +111,39 @@ describe('Couche Base de Données SQLite', () => {
     deletePushSubscription(endpoint);
     const subsAfterDelete = getPushSubscriptionsForUser(user1.id);
     expect(subsAfterDelete.length).toBe(0);
+  });
+
+  it('doit conserver uniquement les utilisateurs configurés sans réinitialiser leurs mots de passe', () => {
+    const legacyRomane = createUser('utilisateur1', 'legacy-romane-hash');
+    const legacyLeny = createUser('utilisateur2', 'legacy-leny-hash');
+    createMessage(legacyRomane.id, legacyLeny.id, 'Historique conservé', null);
+    const configuredUsers = [
+      {
+        username: 'Romane_C',
+        passwordHash: 'initial-romane-hash',
+        migrateFrom: 'utilisateur1',
+      },
+      {
+        username: 'Leny_G',
+        passwordHash: 'initial-leny-hash',
+        migrateFrom: 'utilisateur2',
+      },
+    ];
+
+    syncUsers(configuredUsers);
+    const romane = getUserByUsername('Romane_C');
+    const leny = getUserByUsername('Leny_G');
+    expect(getAllUsers().map((user) => user.username)).toEqual(['Leny_G', 'Romane_C']);
+    expect(romane?.password_hash).toBe('initial-romane-hash');
+    expect(romane?.id).toBe(legacyRomane.id);
+    expect(leny?.id).toBe(legacyLeny.id);
+    expect(getConversationMessages(romane!.id, leny!.id).map((message) => message.content)).toContain(
+      'Historique conservé'
+    );
+
+    updateUserPassword(romane!.id, 'updated-romane-hash');
+    syncUsers(configuredUsers);
+
+    expect(getUserByUsername('Romane_C')?.password_hash).toBe('updated-romane-hash');
   });
 });

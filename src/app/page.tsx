@@ -10,6 +10,7 @@ import {
   X,
   CheckCircle2,
   Lock,
+  KeyRound,
   User,
   Wifi,
   WifiOff,
@@ -60,6 +61,12 @@ export default function ChatApp() {
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [currentPasswordInput, setCurrentPasswordInput] = useState('');
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [passwordChangeError, setPasswordChangeError] = useState('');
+  const [passwordChangeMessage, setPasswordChangeMessage] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // État de la messagerie
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -488,6 +495,37 @@ export default function ChatApp() {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordChangeError('');
+    setPasswordChangeMessage('');
+    setIsChangingPassword(true);
+
+    try {
+      const res = await fetch('/api/auth/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: currentPasswordInput,
+          newPassword: newPasswordInput,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPasswordChangeError(data.error || 'Impossible de modifier le mot de passe');
+        return;
+      }
+
+      setCurrentPasswordInput('');
+      setNewPasswordInput('');
+      setPasswordChangeMessage('Mot de passe modifié.');
+    } catch {
+      setPasswordChangeError('Erreur de connexion au serveur');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   // Déconnexion
   const handleLogout = async () => {
     try {
@@ -546,7 +584,7 @@ export default function ChatApp() {
                   required
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
-                  placeholder="ex: utilisateur1"
+                  placeholder="Romane_C ou Leny_G"
                   className="w-full bg-[#121212] border border-gray-700 text-white rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
@@ -580,15 +618,6 @@ export default function ChatApp() {
             </button>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-gray-700/60 text-xs text-gray-400 space-y-1">
-            <p className="font-medium text-gray-300">Comptes de test configurés :</p>
-            <p className="font-mono text-gray-400">
-              • <span className="text-blue-400">utilisateur1</span> / password123
-            </p>
-            <p className="font-mono text-gray-400">
-              • <span className="text-blue-400">utilisateur2</span> / password123
-            </p>
-          </div>
         </div>
       </main>
     );
@@ -663,7 +692,7 @@ export default function ChatApp() {
           </div>
         </div>
 
-        {/* Actions droite : Bouton Push et Déconnexion */}
+        {/* Actions droite : Push, mot de passe et déconnexion */}
         <div className="flex items-center gap-2">
           {pushSupported && (
             <button
@@ -683,6 +712,19 @@ export default function ChatApp() {
               )}
             </button>
           )}
+
+          <button
+            onClick={() => {
+              setPasswordChangeError('');
+              setPasswordChangeMessage('');
+              setIsPasswordDialogOpen(true);
+            }}
+            title="Modifier le mot de passe"
+            aria-label="Modifier le mot de passe"
+            className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl transition-all active:scale-95"
+          >
+            <KeyRound className="w-4 h-4" />
+          </button>
 
           <button
             onClick={handleLogout}
@@ -836,6 +878,73 @@ export default function ChatApp() {
           </button>
         </form>
       </footer>
+
+      {isPasswordDialogOpen && (
+        <div className="fixed inset-0 z-40 bg-black/70 flex items-center justify-center p-4">
+          <form
+            onSubmit={handleChangePassword}
+            className="w-full max-w-sm bg-[#1f2937] border border-gray-700 rounded-2xl p-5 shadow-xl"
+            aria-labelledby="password-dialog-title"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 id="password-dialog-title" className="text-base font-semibold text-white">
+                Modifier le mot de passe
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsPasswordDialogOpen(false)}
+                title="Fermer"
+                aria-label="Fermer"
+                className="p-1.5 text-gray-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {passwordChangeError && (
+              <p role="alert" className="mb-3 text-sm text-red-300">
+                {passwordChangeError}
+              </p>
+            )}
+            {passwordChangeMessage && (
+              <p role="status" className="mb-3 text-sm text-emerald-300">
+                {passwordChangeMessage}
+              </p>
+            )}
+
+            <label className="block mb-3 text-sm text-gray-300">
+              Mot de passe actuel
+              <input
+                type="password"
+                required
+                autoComplete="current-password"
+                value={currentPasswordInput}
+                onChange={(event) => setCurrentPasswordInput(event.target.value)}
+                className="mt-1 w-full bg-[#121212] border border-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+              />
+            </label>
+            <label className="block mb-4 text-sm text-gray-300">
+              Nouveau mot de passe
+              <input
+                type="password"
+                required
+                minLength={6}
+                autoComplete="new-password"
+                value={newPasswordInput}
+                onChange={(event) => setNewPasswordInput(event.target.value)}
+                className="mt-1 w-full bg-[#121212] border border-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={isChangingPassword}
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg disabled:opacity-50"
+            >
+              {isChangingPassword ? 'Modification...' : 'Enregistrer'}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Modal Plein Écran (Lightbox) pour Photo */}
       {fullScreenImage && (

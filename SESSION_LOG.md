@@ -5,6 +5,26 @@
 ---
 
 ### Session En Cours
+- **[2026-10-11]** - `README` - Rédaction du guide d'installation et d'exploitation, incluant Cloudflare Tunnel, DNS, secrets, sauvegardes et limites de confidentialité.
+- **[2026-10-11]** - `docker-compose.yml` - Liaison du port 3000 à localhost uniquement; le tunnel utilise le réseau Docker interne.
+- **[2026-10-11]** - `data/chat.db` - Exécution de `npm run seed` : synchronisation des comptes Romane_C et Leny_G, suppression des autres comptes; les anciens comptes correspondants sont renommés en conservant leurs IDs et messages.
+- **[2026-10-11]** - Validation - 27 tests Vitest, `npx tsc --noEmit` et `npm run build` réussis.
+- **[2026-10-11]** - Validation HTTP locale - Connexions Romane_C et Leny_G avec les mots de passe initiaux et page d’accueil confirmées en HTTP 200.
+- **[2026-10-11]** - `PROJECT_STATE.md` - Mise à jour de l’état des comptes, de la livraison temps réel et du démarrage local.
+- **[2026-10-11]** - `tests/unit/db.test.ts` - Vérification de migration des deux comptes hérités, conservation de leurs IDs/messages et maintien du mot de passe personnalisé au seed suivant.
+- **[2026-10-11]** - `scripts/seed.ts` - Conversion de utilisateur1/utilisateur2 vers les identifiants demandés en conservant leur historique.
+- **[2026-10-11]** - `src/libs/db.ts` - Prise en charge de l’alias de migration des anciens comptes afin de conserver leur identité interne et leur historique.
+- **[2026-10-11]** - `tests/unit/realtime.test.ts` - Couverture de livraison aux deux participants et du cas destinataire hors ligne.
+- **[2026-10-11]** - `tests/unit/db.test.ts` - Ajout d’une vérification que la synchronisation conserve uniquement les deux comptes configurés et respecte un mot de passe ensuite modifié.
+- **[2026-10-11]** - `src/app/page.tsx` - Mise à jour du placeholder de connexion vers Romane_C ou Leny_G.
+- **[2026-10-11]** - `src/app/page.tsx` - Suppression des anciens identifiants affichés sur l’écran public et ajout d’un formulaire authentifié de changement de mot de passe.
+- **[2026-10-11]** - `src/app/api/auth/password/route.ts` - Ajout de l’API de changement de mot de passe avec session requise, vérification de l’ancien secret et hash bcrypt.
+- **[2026-10-11]** - `src/validations/auth.ts` - Ajout du schéma de validation du changement de mot de passe (ancien et nouveau mot de passe).
+- **[2026-10-11]** - `src/app/api/messages/route.ts` - Diffusion WebSocket des messages REST, avec notification Push seulement si le destinataire n’a pas de socket actif.
+- **[2026-10-11]** - `src/server.ts` - Migration du serveur vers le registre temps réel partagé pour présence, indicateur de saisie et diffusion des messages.
+- **[2026-10-11]** - `src/libs/realtime.ts` - Centralisation des connexions WebSocket et de la diffusion de présence/messages entre le serveur et les routes API.
+- **[2026-10-11]** - `scripts/seed.ts` - Remplacement des anciens comptes de test par Romane_C et Leny_G; seed idempotent côté identifiants et sans affichage des mots de passe.
+- **[2026-10-11]** - `src/libs/db.ts` - Ajout de la synchronisation transactionnelle des seuls utilisateurs configurés, avec conservation des mots de passe existants, et du helper de mise à jour de mot de passe.
 - **[2026-05-17 14:00]** - `SESSION_LOG.md` - Initialisation du journal d'exécution.
 - **[2026-05-17 14:05]** - `src/lib/db.ts` - Création du client DB avec gestion sécurisée des variables d'environnement.
 - **[2026-05-17 14:12]** - `src/app/api/user/route.ts` - Ajout de la route utilisateur avec validation Zod et vérification de session serveur.

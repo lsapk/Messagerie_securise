@@ -1,0 +1,241 @@
+# MonChat - Messagerie privée auto-hebergée
+
+MonChat est une messagerie à deux comptes qui tourne sur votre ordinateur. Le navigateur se connecte à une application Next.js, les messages sont stockés dans une base SQLite locale et les photos restent dans un dossier local. Un serveur WebSocket fournit les messages, la présence et l'indicateur de saisie en direct.
+
+Ce dépôt contient déjà une configuration Docker pour publier l'application sur Internet avec **Cloudflare Tunnel**. C'est probablement le nom du service que vous cherchiez : il relie un nom de domaine à un serveur local sans redirection de port sur la box Internet.
+
+## Ce que fait l'application
+
+- Connexion avec les comptes `Romane_C` et `Leny_G`.
+- Conversations privées entre les deux comptes; chaque personne voit ses propres messages à droite et ceux de l'autre à gauche.
+- Livraison temps réel par WebSocket, avec enregistrement permanent dans SQLite.
+- Présence en ligne et indicateur de saisie.
+- Envoi de photos, conservées dans `uploads/`.
+- Notifications Web Push lorsque le navigateur est autorisé et que le destinataire n'est pas connecté.
+- Installation comme application Web progressive (PWA) sur les appareils compatibles.
+- Changement du mot de passe depuis l'application après connexion.
+
+Les mots de passe initiaux sont `romane123` et `leny123`. Changez-les après la première connexion depuis l'interface. Ils sont hachés en base, mais ces mots de passe initiaux sont volontairement simples et ne doivent pas être conservés pour un service accessible sur Internet.
+
+## Fonctionnement technique
+
+```text
+Navigateur / PWA
+	| HTTPS et WebSocket sécurisé (WSS)
+	v
+Cloudflare Edge
+	| Tunnel sortant chiffré, ouvert par cloudflared
+	v
+cloudflared ---- réseau Docker ----> app:3000
+					   | Next.js + API + WebSocket
+					   + SQLite : ./data/chat.db
+					   + Photos  : ./uploads/
+```
+
+- `src/server.ts` démarre le serveur HTTP Next.js et le serveur WebSocket `/ws`.
+- `src/app/api/` contient les routes d'authentification, de messages, d'upload et de notifications.
+- `src/libs/db.ts` gère SQLite; les tables principales sont `users`, `messages` et `push_subscriptions`.
+- `src/libs/realtime.ts` partage le registre des connexions WebSocket entre le serveur et les API.
+- `public/sw.js` et `public/manifest.json` fournissent les fonctions PWA et les notifications.
+- `data/` et `uploads/` sont des données persistantes. Elles ne sont pas dans l'image Docker.
+
+Le cookie de session est HTTP-only, `SameSite=Lax` et, en production HTTPS, marqué `Secure`. La session dure 30 jours. Les mots de passe sont hachés avec bcrypt. Les payloads sont validés côté serveur.
+
+### Limite de confidentialité à connaître
+
+Le tunnel chiffre le transport entre votre ordinateur et Cloudflare, et HTTPS chiffre le transport entre le navigateur et Cloudflare. Cloudflare termine HTTPS sur son réseau : Cloudflare est donc un intermédiaire de confiance. Le contenu des messages et les photos ne sont **pas chiffrés de bout en bout**; ils sont conservés localement par l'application, mais la base SQLite et les fichiers ne sont pas chiffrés sur le disque. Ce projet ne remplace pas une messagerie conçue pour résister à un administrateur de serveur ou à un fournisseur d'infrastructure hostile.
+
+## Prérequis
+
+Pour le développement local :
+
+- Windows 10/11 ou un système compatible avec Node.js.
+- Node.js 24 recommandé (le Dockerfile utilise Node 24) et npm.
+
+Pour le fonctionnement en ligne permanent :
+
+- Docker Desktop installé et démarré sur l'ordinateur qui hébergera l'application.
+- Un compte Cloudflare.
+- Un nom de domaine dont le DNS est géré par Cloudflare. L'achat du domaine est généralement payant; le tunnel lui-même peut être utilisé avec l'offre Cloudflare adaptée à votre compte.
+- L'ordinateur allumé, connecté à Internet et non en veille.
+
+## Installation locale pour essayer l'application
+
+Dans PowerShell, depuis le dossier du projet :
+
+```powershell
+npm ci
+Copy-Item .env.example .env
+```
+
+Ouvrez `.env` et définissez au minimum un secret de session aléatoire. Vous pouvez en générer un avec Node :
+
+```powershell
+node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(48).toString('base64url'))"
+```
+
+Copiez la valeur obtenue dans `SESSION_SECRET` dans `.env`. Ne publiez pas ce fichier et ne partagez pas les valeurs qu'il contient.
+
+Initialisez les comptes et la base, puis démarrez le mode développement :
+
+```powershell
+npm run seed
+npm run dev
+```
+
+Ouvrez <http://localhost:3000>. Connectez-vous avec `Romane_C` / `romane123` ou `Leny_G` / `leny123`, puis changez immédiatement le mot de passe dans l'application.
+
+`npm run seed` synchronise la base vers ces deux comptes. Il conserve leurs mots de passe s'ils existent déjà, mais **supprime les autres comptes** et les données qui leur sont associées. Sur une base existante, sauvegardez `data/` avant d'exécuter cette commande.
+
+Pour arrêter le mode développement, revenez dans son terminal et faites `Ctrl+C`.
+
+### Notifications Web Push
+
+Les notifications nécessitent HTTPS (sauf `localhost`), l'autorisation du navigateur et des clés VAPID. Générez les clés une seule fois :
+
+```powershell
+npm run vapid:generate
+```
+
+Le script met `.env` à jour et affiche également la clé privée dans le terminal. Gardez cette clé secrète. Ne régénérez pas les clés sur un déploiement existant sans raison : les abonnements Push existants devront être renouvelés. Renseignez aussi `VAPID_SUBJECT`, par exemple `mailto:admin@votre-domaine.com`.
+
+Les notifications dépendent du navigateur et du système d'exploitation. Sur iPhone/iPad, ajoutez d'abord le site à l'écran d'accueil et autorisez les notifications si l'option est disponible.
+
+## Accès en ligne permanent avec Cloudflare Tunnel
+
+Cloudflare Tunnel est déjà prévu dans `docker-compose.yml`. Le navigateur utilisera une adresse telle que `https://chat.votre-domaine.fr`; le tunnel transmettra les requêtes au conteneur `app` sur le réseau Docker.
+
+### 1. Préparer le domaine
+
+Ajoutez votre domaine à Cloudflare et suivez les instructions pour que Cloudflare gère ses serveurs DNS. Si le domaine est acheté ailleurs, vous pouvez généralement le conserver chez son registrar et changer ses serveurs DNS pour ceux fournis par Cloudflare. Attendez que la zone soit active.
+
+### 2. Créer le tunnel
+
+Dans le tableau de bord Cloudflare, ouvrez **Cloudflare One / Zero Trust**, puis **Networks > Tunnels** (les libellés peuvent évoluer). Créez un tunnel de type `cloudflared` et choisissez Docker comme méthode d'installation. Copiez le token du tunnel; c'est un secret qui autorise cette machine à se connecter au tunnel.
+
+Dans la configuration du tunnel, ajoutez un nom d'hôte public, par exemple :
+
+- Sous-domaine : `chat`
+- Domaine : `votre-domaine.fr`
+- Type de service : `HTTP`
+- Adresse du service : `app:3000`
+
+`app` est le nom du service Docker dans ce dépôt. Le trafic WebSocket `/ws` utilise le même nom d'hôte; Cloudflare prend en charge les WebSockets.
+
+### 3. Préparer les secrets sur l'ordinateur serveur
+
+Dans le dossier du projet, créez `.env` s'il n'existe pas :
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Dans `.env`, configurez :
+
+- `SESSION_SECRET` : remplacez impérativement la valeur d'exemple par une valeur aléatoire longue générée avec la commande ci-dessus. Gardez-la stable après le démarrage, sinon les sessions existantes seront invalidées.
+- `TUNNEL_TOKEN` : collez le token obtenu dans Cloudflare. Ne le mettez jamais dans le README, dans Git ou dans une capture d'écran.
+- `VAPID_PUBLIC_KEY` et `VAPID_PRIVATE_KEY` : générez-les avec `npm run vapid:generate` si vous voulez les notifications Push.
+- `VAPID_SUBJECT` : remplacez l'adresse d'exemple par une adresse de contact valide.
+
+Le fichier `.env` est ignoré par Git. Ne partagez jamais son contenu.
+
+### 4. Initialiser et démarrer
+
+Avant le premier démarrage, fermez le serveur de développement s'il utilise déjà la base. Depuis PowerShell, à la racine du dépôt :
+
+```powershell
+npm ci
+npm run seed
+docker compose --profile tunnel up -d --build
+```
+
+La commande `seed` prépare `data/chat.db` sur l'ordinateur hôte; Docker monte ensuite ce dossier dans le conteneur. Elle ne doit pas être lancée à l'aveugle sur une base à préserver : les comptes autres que `Romane_C` et `Leny_G` seront supprimés.
+
+Vérifiez les services et leurs journaux :
+
+```powershell
+docker compose ps
+docker compose logs -f app cloudflared
+```
+
+Quand le tunnel est connecté, ouvrez `https://chat.votre-domaine.fr` depuis l'ordinateur ou un téléphone. Le navigateur doit afficher HTTPS. Faites un test de connexion et d'envoi dans les deux sens.
+
+La configuration Docker publie le port de l'application sur `127.0.0.1:3000` uniquement. `cloudflared` accède à `app:3000` directement dans le réseau Docker. **N'ajoutez pas de redirection du port 3000 dans votre box Internet.** Le tunnel établit une connexion sortante; aucun port entrant n'est requis.
+
+Pour arrêter sans supprimer les données :
+
+```powershell
+docker compose --profile tunnel down
+```
+
+Pour redémarrer les conteneurs déjà créés :
+
+```powershell
+docker compose --profile tunnel up -d
+```
+
+### 5. Laisser l'application accessible
+
+Le tunnel ne peut servir l'application que si l'ordinateur est allumé, connecté à Internet et si Docker Desktop tourne. Configurez Docker Desktop pour démarrer à l'ouverture de session Windows, et empêchez la mise en veille pendant les périodes où vous voulez que le service reste disponible. Les conteneurs ont `restart: unless-stopped`, donc Docker les relance après un redémarrage de l'ordinateur, sauf s'ils ont été arrêtés explicitement.
+
+Un redémarrage ou une panne de courant coupe l'accès pendant l'arrêt. Pour une disponibilité réelle 24/7, il faut aussi une alimentation stable (éventuellement un onduleur), une connexion Internet fiable et un ordinateur qui ne s'éteint pas. Le domaine ne rend pas l'ordinateur toujours accessible à lui seul.
+
+### Protection supplémentaire facultative
+
+L'application exige déjà une connexion MonChat. Vous pouvez ajouter une politique **Cloudflare Access** devant le nom d'hôte afin de limiter l'accès au niveau Cloudflare, par exemple aux adresses e-mail de Romane et Leny. Cette couche est indépendante des comptes MonChat : les utilisateurs devront passer les deux contrôles. Après activation, vérifiez l'accès à la PWA, aux routes API et au WebSocket depuis les deux appareils.
+
+## Données, sauvegardes et restauration
+
+Les données persistantes sont dans :
+
+- `data/` : base SQLite (`chat.db`), utilisateurs, messages et abonnements Push.
+- `uploads/` : photos partagées.
+- `.env` : secrets de session, VAPID et tunnel. Ce fichier n'est pas un volume de données Docker, gardez-en une copie sécurisée à part.
+
+Pour une sauvegarde cohérente sous Windows, arrêtez d'abord les conteneurs, copiez les deux dossiers vers un emplacement privé, puis redémarrez :
+
+```powershell
+docker compose --profile tunnel stop
+$backup = ".\backup-$(Get-Date -Format yyyyMMdd-HHmmss)"
+New-Item -ItemType Directory -Path $backup
+Copy-Item .\data (Join-Path $backup 'data') -Recurse
+Copy-Item .\uploads (Join-Path $backup 'uploads') -Recurse
+docker compose --profile tunnel start
+```
+
+Conservez une copie chiffrée de la sauvegarde sur un autre support. Pour restaurer, arrêtez les conteneurs, remettez `data/` et `uploads/` en place, puis redémarrez. Une sauvegarde contenant les messages ou photos doit être traitée comme une donnée privée.
+
+## Sécurité avant l'exposition publique
+
+- Remplacez `SESSION_SECRET` avant le premier déploiement; une valeur connue permettrait de falsifier des sessions.
+- Changez les deux mots de passe initiaux pour des mots de passe uniques et longs.
+- Protégez `.env`, le token Cloudflare, la clé VAPID privée et les sauvegardes. Ne les commitez pas.
+- Gardez Windows, Docker Desktop, Node et les dépendances à jour.
+- Ne configurez aucune redirection de port sur le routeur; le tunnel doit être le seul chemin public.
+- Le contenu est stocké sans chiffrement de bout en bout. Toute personne ayant accès au compte système, au volume Docker ou aux sauvegardes peut potentiellement lire les données.
+- Cloudflare est un intermédiaire de confiance pour le trafic HTTPS. Le tunnel protège la connexion de transport, mais ne masque pas le contenu à Cloudflare.
+
+## Développement et vérifications
+
+```powershell
+npm test
+npx tsc --noEmit
+npm run build
+```
+
+Scripts disponibles :
+
+- `npm run dev` : serveur de développement.
+- `npm run start` : serveur personnalisé, utilisé par Docker en production.
+- `npm run seed` : synchronise les deux comptes (voir l'avertissement ci-dessus).
+- `npm run vapid:generate` : génère les clés Web Push et modifie `.env`.
+- `npm test` : exécute les tests Vitest.
+
+## Dépannage rapide
+
+- **Le domaine ne répond pas** : vérifiez que la zone DNS est active, que le nom d'hôte du tunnel est exact et que `docker compose logs cloudflared` ne signale pas un token invalide.
+- **Le tunnel fonctionne mais le site renvoie une erreur** : le service public doit viser `http://app:3000`, pas `localhost:3000` depuis le conteneur `cloudflared`.
+- **Le navigateur ne se connecte pas en temps réel** : ouvrez le site en HTTPS, vérifiez `/ws`, puis consultez `docker compose logs -f app cloudflared`.
+- **Les photos ou messages disparaissent après reconstruction** : vérifiez que les dossiers `data/` et `uploads/` existent à côté de `docker-compose.yml` et ne les supprimez pas lors d'un nettoyage.
+- **Le conteneur ne démarre pas** : vérifiez `.env`, Docker Desktop et `docker compose logs app`.
+- **Une notification n'arrive pas** : vérifiez les clés VAPID, l'autorisation du navigateur, HTTPS et les réglages de notification du système.

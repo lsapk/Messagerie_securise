@@ -3,6 +3,7 @@ import { getSessionFromRequest } from '@/libs/auth';
 import { createMessageSchema } from '@/validations/message';
 import { getConversationMessages, createMessage, getUserById } from '@/libs/db';
 import { sendPushToUser } from '@/libs/push';
+import { broadcastNewMessage } from '@/libs/realtime';
 
 export async function GET(request: Request) {
   const session = getSessionFromRequest(request);
@@ -61,11 +62,14 @@ export async function POST(request: Request) {
       mediaPath ?? null
     );
 
-    sendPushToUser(recipientId, {
-      title: `${session.username}`,
-      body: content || '📷 Vous a envoyé une photo.',
-      url: '/',
-    }).catch((err) => console.error('Push error:', err));
+    const recipientReceivedViaWs = broadcastNewMessage(session.id, recipientId, newMessage);
+    if (!recipientReceivedViaWs) {
+      sendPushToUser(recipientId, {
+        title: `${session.username}`,
+        body: content || 'Vous a envoyé une photo.',
+        url: '/',
+      }).catch((err) => console.error('Push error:', err));
+    }
 
     return NextResponse.json({
       success: true,

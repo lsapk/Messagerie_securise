@@ -23,6 +23,7 @@
 
 ## 4. Fonctionnalités Implémentées
 - [x] Authentification & Gestion des sessions (Login, Logout, Cookie HTTP-only, Rate Limiting).
+- [x] Comptes limités à Romane_C et Leny_G; mots de passe modifiables depuis l’application.
 - [x] Messagerie temps réel bidirectionnelle via WebSocket (`ws://` ou `wss://` sur `/ws`).
 - [x] Indicateur de présence (en ligne / hors ligne) et indicateur de saisie en direct.
 - [x] Partage de photos HD (Upload sécurisé, validation MIME, prévisualisation, Lightbox plein écran).
@@ -30,7 +31,7 @@
 - [x] Module Web Push VAPID : script de génération de clés, souscription client, dispatch automatique dès qu'un destinataire n'est pas actif sur le WebSocket.
 - [x] Dockerfile multi-stage et `docker-compose.yml` avec service `cloudflared`.
 - [x] Scripts utilitaires : `npm run seed` (utilisateurs de test), `npm run vapid:generate` (générateur de clés).
-- [x] Suite complète de tests unitaires et d'intégration Vitest (24 tests validés avec succès).
+- [x] Suite complète de tests unitaires et d'intégration Vitest (27 tests validés avec succès).
 - [x] Vérification de typage TypeScript strict sans erreur (`tsc --noEmit`).
 
 ## 5. Dette Technique & Points d'Attention
@@ -40,9 +41,11 @@
 - [ ] En production avec Cloudflare Tunnel, renseigner `TUNNEL_TOKEN` puis lancer `docker compose --profile tunnel up -d`.
 - [ ] Sur iOS (Safari), ajouter l’app à l’écran d’accueil pour autoriser Web Push.
 - [ ] `SESSION_SECRET` dans `.env` est encore un placeholder : le remplacer avant un déploiement public.
-- [ ] Des utilisateurs de test (`alice`, `bob`) existent dans `data/chat.db` suite aux anciens tests ; le sélecteur de contact permet de choisir `utilisateur2`.
+- [x] Base active synchronisée vers Romane_C et Leny_G; les IDs et messages des anciens comptes utilisateur1/utilisateur2 sont conservés.
+- [x] Envoi REST et WebSocket diffusé en temps réel aux deux participants; messages alignés selon leur expéditeur.
+- [x] Guide README d'installation et de déploiement en ligne via Cloudflare Tunnel.
 - [ ] Pas encore de suite E2E Playwright (auth + envoi de message).
 
 ## 6. Prochaines Étapes
-1. Lancer l'application en local via `npm run dev` (après `npm run seed` si la base est vide).
+1. Lancer l'application en local via `npm run dev`.
 2. Déployer sur Docker : `docker compose up -d` (app seule) ou `docker compose --profile tunnel up -d` avec Cloudflare.

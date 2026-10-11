@@ -140,6 +140,47 @@ export function createUser(username: string, passwordHash: string): User {
   return stmt.get(username, passwordHash) as User;
 }
 
+export function syncUsers(
+  users: Array<{ username: string; passwordHash: string; migrateFrom?: string }>
+): void {
+  if (users.length === 0) {
+    throw new Error('Au moins un utilisateur doit être configuré');
+  }
+
+  const db = getDb();
+  const insertUser = db.prepare<[string, string]>(
+    'INSERT INTO users (username, password_hash) VALUES (?, ?) ON CONFLICT(username) DO NOTHING'
+  );
+  const renameUser = db.prepare<[string, string, number]>(
+    'UPDATE users SET username = ?, password_hash = ? WHERE id = ?'
+  );
+  const allowedUsernames = users.map((user) => user.username.toLowerCase());
+  const placeholders = allowedUsernames.map(() => '?').join(', ');
+  const removeUnconfiguredUsers = db.prepare(
+    `DELETE FROM users WHERE username COLLATE NOCASE NOT IN (${placeholders})`
+  );
+
+  db.transaction(() => {
+    for (const user of users) {
+      if (getUserByUsername(user.username)) continue;
+
+      const legacyUser = user.migrateFrom ? getUserByUsername(user.migrateFrom) : undefined;
+      if (legacyUser) {
+        renameUser.run(user.username, user.passwordHash, legacyUser.id);
+      } else {
+        insertUser.run(user.username, user.passwordHash);
+      }
+    }
+    removeUnconfiguredUsers.run(...allowedUsernames);
+  })();
+}
+
+export function updateUserPassword(userId: number, passwordHash: string): void {
+  getDb()
+    .prepare<[string, number]>('UPDATE users SET password_hash = ? WHERE id = ?')
+    .run(passwordHash, userId);
+}
+
 // Fonctions Messages
 export function createMessage(
   senderId: number,

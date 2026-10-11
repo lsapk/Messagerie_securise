@@ -11,6 +11,13 @@ import { initDb, createMessage, getUserById } from './libs/db';
 import { getSessionFromCookieHeader } from './libs/auth';
 import { wsMessageSchema } from './validations/message';
 import { sendPushToUser, configureWebPush } from './libs/push';
+import {
+  broadcastNewMessage,
+  getOnlineUserIds,
+  registerSocket,
+  sendToUser,
+  unregisterSocket,
+} from './libs/realtime';
 
 const port = Number(process.env.PORT) || 3000;
 const dev = process.env.NODE_ENV !== 'production';
@@ -20,44 +27,6 @@ initDb();
 configureWebPush();
 
 const app = next({ dev, hostname: '0.0.0.0', port });
-
-// Map userId -> Set de WebSockets actifs (un utilisateur peut avoir plusieurs onglets/appareils ouverts)
-const activeUserSockets = new Map<number, Set<WebSocket>>();
-
-function registerSocket(userId: number, socket: WebSocket) {
-  if (!activeUserSockets.has(userId)) {
-    activeUserSockets.set(userId, new Set());
-  }
-  activeUserSockets.get(userId)!.add(socket);
-  broadcastPresence();
-}
-
-function unregisterSocket(userId: number, socket: WebSocket) {
-  const sockets = activeUserSockets.get(userId);
-  if (sockets) {
-    sockets.delete(socket);
-    if (sockets.size === 0) {
-      activeUserSockets.delete(userId);
-    }
-  }
-  broadcastPresence();
-}
-
-function broadcastPresence() {
-  const onlineUserIds = Array.from(activeUserSockets.keys());
-  const payload = JSON.stringify({
-    type: 'presence',
-    onlineUserIds,
-  });
-
-  for (const userSet of activeUserSockets.values()) {
-    for (const ws of userSet) {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(payload);
-      }
-    }
-  }
-}
 
 async function main() {
   await app.prepare();
@@ -100,7 +69,7 @@ async function main() {
       JSON.stringify({
         type: 'connected',
         user: { id: user.id, username: user.username },
-        onlineUserIds: Array.from(activeUserSockets.keys()),
+        onlineUserIds: getOnlineUserIds(),
       })
     );
 
@@ -129,28 +98,18 @@ async function main() {
 
         if (msg.type === 'typing') {
           // Relayer l'indicateur de saisie aux autres utilisateurs
-          const typingPayload = JSON.stringify({
+          const typingPayload = {
             type: 'user_typing',
             userId: user.id,
             username: user.username,
             isTyping: msg.isTyping,
-          });
+          };
 
           if (msg.recipientId) {
-            const recipientSockets = activeUserSockets.get(msg.recipientId);
-            if (recipientSockets) {
-              for (const s of recipientSockets) {
-                if (s.readyState === WebSocket.OPEN) s.send(typingPayload);
-              }
-            }
+            sendToUser(msg.recipientId, typingPayload);
           } else {
-            // Relayer à tout le monde sauf l'expéditeur
-            for (const [uid, set] of activeUserSockets.entries()) {
-              if (uid !== user.id) {
-                for (const s of set) {
-                  if (s.readyState === WebSocket.OPEN) s.send(typingPayload);
-                }
-              }
+            for (const userId of getOnlineUserIds()) {
+              if (userId !== user.id) sendToUser(userId, typingPayload);
             }
           }
           return;
@@ -177,29 +136,11 @@ async function main() {
             msg.mediaPath ?? null
           );
 
-          const chatPayload = JSON.stringify({
-            type: 'new_message',
-            message: savedMessage,
-          });
-
-          const senderSockets = activeUserSockets.get(user.id);
-          if (senderSockets) {
-            for (const s of senderSockets) {
-              if (s.readyState === WebSocket.OPEN) s.send(chatPayload);
-            }
-          }
-
-          const recipientSockets = activeUserSockets.get(msg.recipientId);
-          let recipientReceivedViaWs = false;
-
-          if (recipientSockets && recipientSockets.size > 0) {
-            for (const s of recipientSockets) {
-              if (s.readyState === WebSocket.OPEN) {
-                s.send(chatPayload);
-                recipientReceivedViaWs = true;
-              }
-            }
-          }
+          const recipientReceivedViaWs = broadcastNewMessage(
+            user.id,
+            msg.recipientId,
+            savedMessage
+          );
 
           if (!recipientReceivedViaWs) {
             sendPushToUser(msg.recipientId, {

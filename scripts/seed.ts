@@ -1,32 +1,27 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { initDb, createUser, getUserByUsername } from '../src/libs/db';
+import { initDb, syncUsers } from '../src/libs/db';
 import { hashPassword } from '../src/libs/auth';
 
 async function seed() {
   initDb();
 
-  console.log('--- Initialisation des Utilisateurs par Défaut ---');
-
   const defaultUsers = [
-    { username: 'utilisateur1', password: 'password123' },
-    { username: 'utilisateur2', password: 'password123' },
+    { username: 'Romane_C', password: 'romane123', migrateFrom: 'utilisateur1' },
+    { username: 'Leny_G', password: 'leny123', migrateFrom: 'utilisateur2' },
   ];
 
-  for (const u of defaultUsers) {
-    const existing = getUserByUsername(u.username);
-    if (!existing) {
-      const hash = await hashPassword(u.password);
-      const created = createUser(u.username, hash);
-      console.log(`✅ Utilisateur créé : "${created.username}" (ID: ${created.id}) | Mot de passe : "${u.password}"`);
-    } else {
-      console.log(`ℹ️  Utilisateur "${u.username}" existe déjà (ID: ${existing.id}).`);
-    }
-  }
+  const users = await Promise.all(
+    defaultUsers.map(async ({ username, password, migrateFrom }) => ({
+      username,
+      migrateFrom,
+      passwordHash: await hashPassword(password),
+    }))
+  );
+  syncUsers(users);
 
-  console.log('--------------------------------------------------');
-  console.log('Vous pouvez vous connecter avec ces identifiants pour tester la messagerie en duo !');
+  console.log('Les comptes Romane_C et Leny_G sont prêts. Les autres comptes ont été supprimés.');
 }
 
 seed().catch((err) => {
